@@ -26,5 +26,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors(options => options.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin());
 app.UseRouting();
-app.UseEndpoints(endpoints => endpoints.MapControllers());
+app.UseEndpoints(endpoints =>
+{
+    _ = endpoints.MapControllers();
+});
 app.Run();
