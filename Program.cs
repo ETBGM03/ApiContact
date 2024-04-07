@@ -8,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddCors();
+builder.Services.AddControllers();
 
 var connectionString = builder.Configuration.GetConnectionString("ConnectionPostgresDb");
 builder.Services.AddDbContext<ContactDb>(options => options.UseNpgsql(connectionString));
@@ -24,9 +25,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors(options => options.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin());
-
-app.UseEndpoints(endpoints => {
-    _ = endpoints.MapControllers();
-});
-
+app.UseRouting();
+app.UseEndpoints(endpoints => endpoints.MapControllers());
 app.Run();

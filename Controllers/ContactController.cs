@@ -6,19 +6,16 @@ using Microsoft.EntityFrameworkCore;
 namespace ApiContact.Controllers
 {
     [ApiController]
-    [Route("[Controllers]")]
+    [Route("api/contact")]
     public class ContactController : ControllerBase
     {
 
         private readonly ContactDb _db;
-
         public ContactController (ContactDb db)
         {
             _db = db;
         }
-
-
-
+        
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Contact>>> GetContacts()
         {
@@ -55,7 +52,7 @@ namespace ApiContact.Controllers
             return Created($"/contact/{newContact.Id}", newContact);
         }
 
-        [HttpPut("{id:int}")]
+        [HttpPatch("{id:int}")]
         public async Task<ActionResult<Contact>> UpdateContact(int id, Contact updatedContact)
         {
             if (id != updatedContact.Id)
