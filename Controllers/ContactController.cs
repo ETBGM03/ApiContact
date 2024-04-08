@@ -1,7 +1,9 @@
 ﻿using ApiContact.Data;
+using ApiContact.DataTypes;
 using ApiContact.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ExtraFields = ApiContact.Models.ExtraFields;
 
 namespace ApiContact.Controllers
 {
@@ -9,13 +11,13 @@ namespace ApiContact.Controllers
     [Route("api/contact")]
     public class ContactController : ControllerBase
     {
-
         private readonly ContactDb _db;
-        public ContactController (ContactDb db)
+
+        public ContactController(ContactDb db)
         {
             _db = db;
         }
-        
+
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Contact>>> GetContacts()
         {
@@ -40,16 +42,44 @@ namespace ApiContact.Controllers
             }
 
             return Ok(contact);
-
         }
 
-
         [HttpPost]
-        public async Task<ActionResult<Contact>> CreateContact(Contact newContact)
+        public async Task<ActionResult<InputContact>> CreateContact(InputContact newContact)
         {
-            _db.Contacts.Add(newContact);
+            var contact = new Contact();
+            var contactType = await _db.ContactType.FirstOrDefaultAsync(ct => ct.Type == newContact.ContactType);
+            contact.Name = newContact.Name;
+            contact.Phone = newContact.Phone;
+            contact.Comments = newContact.Comments;
+            if (contactType is { Id: 0 })
+            {
+                contact.ContactType = new ContactType { Type = "Person", Id = 1 };
+            }
+            
+            if (contactType is { Type: not null })
+            {
+                contact.ContactTypeId = contactType.Id;
+
+            }
+            _db.Contacts.Add(contact);
             await _db.SaveChangesAsync();
-            return Created($"/contact/{newContact.Id}", newContact);
+
+            foreach (var extraField in newContact.ExtraFields)
+            {
+                var field = new ExtraFields();
+
+                field.Field = extraField.Field;
+                field.Value = extraField.Value;
+                field.ContactId = contact.Id;
+
+                _db.ExtraFields.Add(field);
+            }
+
+            await _db.SaveChangesAsync();
+
+
+            return Created($"/contact/{contact.Id}", newContact);
         }
 
         [HttpPatch("{id:int}")]
@@ -91,6 +121,5 @@ namespace ApiContact.Controllers
 
             return Ok("Contact deleted successfully");
         }
-
     }
 }
