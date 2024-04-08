@@ -1,4 +1,6 @@
-﻿using ApiContact.Data;
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
+using ApiContact.Data;
 using ApiContact.DataTypes;
 using ApiContact.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +23,10 @@ namespace ApiContact.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Contact>>> GetContacts()
         {
-            var contactList = await _db.Contacts.ToListAsync();
+            var contactList = await _db.Contacts
+                .Include(c => c.ExtraFields)
+                .Include(c => c.ContactType)
+                .ToListAsync();
 
             if (contactList.Count == 0)
             {
@@ -34,14 +39,25 @@ namespace ApiContact.Controllers
         [HttpGet("{id:int}")]
         public async Task<ActionResult<Contact>> GetContactById(int id)
         {
-            var contact = await _db.Contacts.SingleOrDefaultAsync(contact => contact.Id == id);
+            
+            
+            var contact = await _db.Contacts
+                .Include(c => c.ExtraFields)
+                .SingleOrDefaultAsync(contact => contact.Id == id);
 
             if (contact == null)
             {
                 return NotFound("Contact not found with this Id");
             }
 
-            return Ok(contact);
+            var options = new JsonSerializerOptions
+            {
+                ReferenceHandler = ReferenceHandler.Preserve
+            };
+
+            var serializedContact = JsonSerializer.Serialize(contact, options);
+
+            return Ok(serializedContact);
         }
 
         [HttpPost]
@@ -83,43 +99,55 @@ namespace ApiContact.Controllers
         }
 
         [HttpPatch("{id:int}")]
-        public async Task<ActionResult<Contact>> UpdateContact(int id, Contact updatedContact)
+        public async Task<ActionResult<Contact>> UpdateContact(int id, InputPatchContact updatedContact)
         {
-            if (id != updatedContact.Id)
+            try
             {
-                return BadRequest("The id does not match");
+                var contact = await _db.Contacts.FindAsync(id);
+
+                if (contact == null)
+                {
+                    return NotFound("Contact not found with this Id");
+                }
+
+                contact.Name = updatedContact.Name;
+                contact.Phone = updatedContact.Phone;
+                contact.Comments = updatedContact.Comments;
+
+                await _db.SaveChangesAsync();
+                return Ok(contact);
             }
-
-            var contact = await _db.Contacts.FindAsync(id);
-
-            if (contact == null)
+            catch (Exception e)
             {
-                return NotFound("Contact not found with this Id");
+                Console.WriteLine(e);
+                throw;
             }
-
-            contact.Name = updatedContact.Name;
-            contact.Phone = updatedContact.Phone;
-            contact.Comments = updatedContact.Comments;
-
-            await _db.SaveChangesAsync();
-
-            return Ok(contact);
         }
+
 
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> DeleteContact(int id)
         {
             var contact = await _db.Contacts.FindAsync(id);
+            var extraFields = await _db.ExtraFields.Where(ef => ef.ContactId == id).ToListAsync();
 
             if (contact == null)
             {
                 return NotFound("Contact not found with this Id");
             }
+
+            foreach (var extraField in extraFields)
+            {
+                _db.ExtraFields.Remove(extraField);
+            }
+
+            await _db.SaveChangesAsync();
 
             _db.Contacts.Remove(contact);
             await _db.SaveChangesAsync();
 
             return Ok("Contact deleted successfully");
         }
+
     }
 }

@@ -12,8 +12,16 @@ public class InputContact
         
 }
 
+public class InputPatchContact
+{
+    public string Name { get; set; }
+    public string Phone { get; set; }
+    public string Comments { get; set; }
+}
+
 public class InputExtraFields
 {
     public string Field { get; set; }
     public string Value { get; set; }
 }
+
